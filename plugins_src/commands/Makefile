@@ -42,6 +42,7 @@ MODULES= \
 	wpc_cylindrilize \
 	wpc_doosabin \
 	wpc_intersect_edge \
+	wpc_intersect_object \
 	wpc_intersect_vertex \
 	wpc_magnet_mask \
 	wpc_move_planar \
