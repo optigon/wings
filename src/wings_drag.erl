@@ -383,18 +383,9 @@ help_message(#drag{unit=Unit,mode_fun=ModeFun,mode_data=ModeData}) ->
     Cancel = wings_msg:button_format([], [], wings_s:cancel()),
     NumEntry = ?__(1,"Numeric Entry"),
     Tab = wings_util:key_format("[Tab]", NumEntry),
-    Switch = switch(),
-    Constraint = ?__(2,"Switch Constraint Set")++Switch,
-    ShiftTab = wings_util:key_format("[Shift]+[Tab]", Constraint),
-    Msg = wings_msg:join([Accept, Message, Cancel, Tab, ShiftTab]),
+    Msg = wings_msg:join([Accept, Message, Cancel, Tab]),
     MsgRight = ModeFun(help, ModeData),
     wings_wm:message(Msg, MsgRight).
-
-switch() ->
-    case wings_pref:get_value(con_alternate) of
-      true -> ?__(1," (using Alternate Constraints)");
-      false -> []
-    end.
 
 drag_help(Units) ->
     {_,_,Message} = foldl(fun
@@ -494,15 +485,8 @@ handle_drag_event(#mousebutton{button=1,state=?SDL_PRESSED}=Ev,
   #drag{lmb_timer=0}=Drag) ->
     StartTimer = now(),
     handle_drag_event(Ev, Drag#drag{lmb_timer=StartTimer});
-handle_drag_event(#keyboard{sym=9, mod=Mod},Drag)->
-    case Mod band ?SHIFT_BITS =/= 0 of
-      true ->
-        case wings_pref:get_value(con_alternate) of
-          true ->  wings_pref:set_value(con_alternate,false);
-          false -> wings_pref:set_value(con_alternate,true)
-        end, get_drag_event(Drag);
-      false -> numeric_input(Drag)
-    end;
+handle_drag_event(#keyboard{sym=9},Drag)->
+    numeric_input(Drag);
 handle_drag_event(#mousebutton{button=2,state=?SDL_RELEASED},
   #drag{lmb_timer=0,mmb_timer=C,rmb_timer=0}=Drag) when C > 2 ->
     get_drag_event_1(Drag#drag{mmb_timer=0});
@@ -889,33 +873,18 @@ scale_mouse_back([D|Ds], [S|Ss], [O|Ofs]) ->
     [(D-O)/S|scale_mouse_back(Ds,Ss,Ofs)];
 scale_mouse_back(Ds, _, _) -> Ds.
 
-constraints_scale([U0|_],Mod,[UnitScales|_]) ->
-    case wings_pref:get_value(con_alternate) of
-    true -> case constraint_factor_alt(clean_unit(U0),Mod) of
+constraints_scale([U0|_], Mod, [UnitScales|_]) ->
+    U = clean_unit(U0),
+    case constraint_factor(U, Mod) of
         none -> 1.0;
-        {_,What} ->
-          What*0.01/UnitScales
-      end;
-    false -> case constraint_factor(clean_unit(U0),Mod) of
-        none -> 1.0;
-        {_,What} ->
-          What*0.01/UnitScales
-      end
+        {_,What} -> What*0.01/UnitScales
     end.
 
 round_to_constraint([U0|Us], [{con,D0}|Ds], Mod, Acc) ->
     U = clean_unit(U0),
-    D = case wings_pref:get_value(con_alternate) of
-      true -> case constraint_factor_alt(U, Mod) of
+    D = case constraint_factor(U, Mod) of
         none -> D0;
-        {F1,F2} ->
-          round(D0*F1)*F2
-        end;
-      false -> case constraint_factor(U, Mod) of
-        none -> D0;
-        {F1,F2} ->
-          round(D0*F1)*F2
-            end
+        {F1,F2} -> round(D0*F1)*F2
     end,
     round_to_constraint(Us, Ds, Mod, [D|Acc]);
 
@@ -1027,81 +996,6 @@ constraint_factor(_, Mod) ->
       Mod band ?SHIFT_BITS =/= 0 -> {1/DCS,DCS};
       Mod band ?ALT_BITS =/= 0 -> {1/DCA,DCA};
       true -> none
-    end.
-constraint_factor_alt(angle, Mod) ->
-    RCRS = filter_angle(wings_pref:get_value(con_rot_shift)),
-    RCRC = filter_angle(wings_pref:get_value(con_rot_ctrl)),
-    RCRCS = filter_angle(wings_pref:get_value(con_rot_ctrl_shift)),
-    RCRA = filter_angle(wings_pref:get_value(con_rot_alt)),
-    RCRCA = filter_angle(wings_pref:get_value(con_rot_ctrl_alt)),
-    RCRSA = filter_angle(wings_pref:get_value(con_rot_shift_alt)),
-    RCRCSA = filter_angle(wings_pref:get_value(con_rot_ctrl_shift_alt)),
-    if
-      Mod band ?SHIFT_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0,
-      Mod band ?CTRL_BITS =/= 0 -> {1/RCRCSA,RCRCSA};
-      Mod band ?SHIFT_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0 -> {1/RCRSA,RCRSA};
-      Mod band ?CTRL_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0 -> {1/RCRCA,RCRCA};
-      Mod band ?SHIFT_BITS =/= 0,
-      Mod band ?CTRL_BITS =/= 0 -> {1/RCRCS,RCRCS};
-      Mod band ?CTRL_BITS =/= 0 -> {1/RCRC,RCRC};
-      Mod band ?SHIFT_BITS =/= 0 -> {1/RCRS,RCRS};
-      Mod band ?ALT_BITS =/= 0 -> {1/RCRA,RCRA};
-      true -> none
-    end;
-constraint_factor_alt(percent, Mod) ->
-    SCS = 1.0/wings_pref:get_value(con_scale_shift),
-    SCC = 1.0/wings_pref:get_value(con_scale_ctrl),
-    SCCS = 1.0/wings_pref:get_value(con_scale_ctrl_shift),
-    SCA = 1.0/wings_pref:get_value(con_scale_alt),
-    SCCA = 1.0/wings_pref:get_value(con_scale_ctrl_alt),
-    SCSA = 1.0/wings_pref:get_value(con_scale_shift_alt),
-    SCCSA = 1.0/wings_pref:get_value(con_scale_ctrl_shift_alt),
-    if
-      Mod band ?SHIFT_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0,
-      Mod band ?CTRL_BITS =/= 0-> {1/SCCSA,SCCSA};
-      Mod band ?SHIFT_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0 -> {1/SCSA,SCSA};
-      Mod band ?CTRL_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0 -> {1/SCCA,SCCA};
-      Mod band ?CTRL_BITS =/= 0,
-      Mod band ?SHIFT_BITS =/= 0 -> {1/SCCS,SCCS};
-      Mod band ?CTRL_BITS =/= 0 -> {1/SCC,SCC};
-      Mod band ?SHIFT_BITS =/= 0 -> {1/SCS,SCS};
-      Mod band ?ALT_BITS =/= 0 -> {1/SCA,SCA};
-      true -> none
-    end;
-constraint_factor_alt(_, Mod) ->
-    DCS = wings_pref:get_value(con_dist_a_shift),
-    DCC = wings_pref:get_value(con_dist_a_ctrl),
-    DCCS = wings_pref:get_value(con_dist_a_ctrl_shift),
-    DCA = wings_pref:get_value(con_dist_a_alt),
-    DCCA = wings_pref:get_value(con_dist_a_ctrl_alt),
-    DCSA = wings_pref:get_value(con_dist_a_shift_alt),
-    DCCSA = wings_pref:get_value(con_dist_a_ctrl_shift_alt),
-    if
-      Mod band ?SHIFT_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0,
-      Mod band ?CTRL_BITS =/= 0-> {1/DCCSA,DCCSA};
-      Mod band ?SHIFT_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0 -> {1/DCSA,DCSA};
-      Mod band ?CTRL_BITS =/= 0,
-      Mod band ?ALT_BITS =/= 0 -> {1/DCCA,DCCA};
-      Mod band ?CTRL_BITS =/= 0,
-      Mod band ?SHIFT_BITS =/= 0 -> {1/DCCS,DCCS};
-      Mod band ?CTRL_BITS =/= 0 -> {1/DCC,DCC};
-      Mod band ?SHIFT_BITS =/= 0 -> {1/DCS,DCS};
-      Mod band ?ALT_BITS =/= 0 -> {1/DCA,DCA};
-      true -> none
-    end.
-
-filter_angle(Degrees) ->
-    case Degrees =/= 180.0 of
-      true -> 180.0 - Degrees;
-      false -> 180.0
     end.
 
 %%%

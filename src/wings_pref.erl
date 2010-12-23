@@ -403,13 +403,7 @@ defaults() ->
      {con_dist_ctrl_alt,0.0010},
      {con_dist_shift_alt,0.250},
      {con_dist_ctrl_shift_alt,0.0250},
-     {con_dist_a_alt,1/64},
-     {con_dist_a_shift,1/4},
-     {con_dist_a_ctrl,1/8},
-     {con_dist_a_ctrl_shift,1/32},
-     {con_dist_a_ctrl_alt,5/8},
-     {con_dist_a_shift_alt,1/16},
-     {con_dist_a_ctrl_shift_alt,3/64},
+
      {con_rot_alt,180.0},
      {con_rot_shift,15.0},
      {con_rot_ctrl,1.0},
@@ -417,6 +411,7 @@ defaults() ->
      {con_rot_ctrl_alt,22.50},
      {con_rot_shift_alt,135.0},
      {con_rot_ctrl_shift_alt,144.0},
+
      {con_scale_alt,10.0},
      {con_scale_shift,1.0},
      {con_scale_ctrl,0.10},
@@ -424,11 +419,6 @@ defaults() ->
      {con_scale_ctrl_alt,0.0010},
      {con_scale_shift_alt,0.250},
      {con_scale_ctrl_shift_alt,0.0250},
-     {con_alternate,false},
-     {con_dist_set,con_dist_},
-     {con_dist_default,alt},
-     {con_rot_default,alt},
-     {con_scale_default,alt},
 
      %% Drag preferences.
      {drag_custom,false},
