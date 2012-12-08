@@ -61,7 +61,8 @@ MODULES= \
 	wpc_untriangulate \
 	wpc_grid_snap \
 	wpc_weld \
-	wpc_sel_win
+	wpc_sel_win \
+	wpc_views_win
 
 TARGET_FILES= $(MODULES:%=$(EBIN)/%.beam)
 
